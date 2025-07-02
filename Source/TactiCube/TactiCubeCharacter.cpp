@@ -10,6 +10,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Materials/Material.h"
 #include "Engine/World.h"
+#include "Components/GridMovementComponent.h"
 
 ATactiCubeCharacter::ATactiCubeCharacter()
 {
@@ -43,9 +44,16 @@ ATactiCubeCharacter::ATactiCubeCharacter()
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
+
+	GridMovement = CreateDefaultSubobject<UGridMovementComponent>("GridMovement");
 }
 
 void ATactiCubeCharacter::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+}
+
+FVector ATactiCubeCharacter::GetNextLocation(FVector Direction)
+{
+	return GridMovement->GetNextTargetLocation(Direction);
 }
