@@ -12,6 +12,8 @@
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 
+#include "TactiCubeCharacter.h"
+
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
 ATactiCubePlayerController::ATactiCubePlayerController()
@@ -20,12 +22,8 @@ ATactiCubePlayerController::ATactiCubePlayerController()
 	DefaultMouseCursor = EMouseCursor::Default;
 	CachedDestination = FVector::ZeroVector;
 	FollowTime = 0.f;
-}
 
-void ATactiCubePlayerController::BeginPlay()
-{
-	// Call the base class  
-	Super::BeginPlay();
+
 }
 
 void ATactiCubePlayerController::SetupInputComponent()
@@ -43,16 +41,10 @@ void ATactiCubePlayerController::SetupInputComponent()
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
 	{
 		// Setup mouse input events
-		EnhancedInputComponent->BindAction(SetDestinationClickAction, ETriggerEvent::Started, this, &ATactiCubePlayerController::OnInputStarted);
-		EnhancedInputComponent->BindAction(SetDestinationClickAction, ETriggerEvent::Triggered, this, &ATactiCubePlayerController::OnSetDestinationTriggered);
-		EnhancedInputComponent->BindAction(SetDestinationClickAction, ETriggerEvent::Completed, this, &ATactiCubePlayerController::OnSetDestinationReleased);
-		EnhancedInputComponent->BindAction(SetDestinationClickAction, ETriggerEvent::Canceled, this, &ATactiCubePlayerController::OnSetDestinationReleased);
-
-		// Setup touch input events
-		EnhancedInputComponent->BindAction(SetDestinationTouchAction, ETriggerEvent::Started, this, &ATactiCubePlayerController::OnInputStarted);
-		EnhancedInputComponent->BindAction(SetDestinationTouchAction, ETriggerEvent::Triggered, this, &ATactiCubePlayerController::OnTouchTriggered);
-		EnhancedInputComponent->BindAction(SetDestinationTouchAction, ETriggerEvent::Completed, this, &ATactiCubePlayerController::OnTouchReleased);
-		EnhancedInputComponent->BindAction(SetDestinationTouchAction, ETriggerEvent::Canceled, this, &ATactiCubePlayerController::OnTouchReleased);
+		EnhancedInputComponent->BindAction(SetDestinationKeyboardAction, ETriggerEvent::Started, this, &ATactiCubePlayerController::OnInputStarted);
+		EnhancedInputComponent->BindAction(SetDestinationKeyboardAction, ETriggerEvent::Triggered, this, &ATactiCubePlayerController::OnSetDestinationTriggered);
+		EnhancedInputComponent->BindAction(SetDestinationKeyboardAction, ETriggerEvent::Completed, this, &ATactiCubePlayerController::OnSetDestinationReleased);
+		EnhancedInputComponent->BindAction(SetDestinationKeyboardAction, ETriggerEvent::Canceled, this, &ATactiCubePlayerController::OnSetDestinationReleased);
 	}
 	else
 	{
@@ -66,30 +58,25 @@ void ATactiCubePlayerController::OnInputStarted()
 }
 
 // Triggered every frame when the input is held down
-void ATactiCubePlayerController::OnSetDestinationTriggered()
+void ATactiCubePlayerController::OnSetDestinationTriggered(const FInputActionValue& InputActionValue)
 {
+	FVector Direction = InputActionValue.Get<FVector>();
+
+	DirectionAxis = FMath::Abs(Direction.Y) > FMath::Abs(Direction.X) ?
+		EInputDirectionAxis::IDA_Right : EInputDirectionAxis::IDA_Forward;
+
 	// We flag that the input is being pressed
 	FollowTime += GetWorld()->GetDeltaSeconds();
-	
-	// We look for the location in the world where the player has pressed the input
-	FHitResult Hit;
-	bool bHitSuccessful = false;
-	if (bIsTouch)
-	{
-		bHitSuccessful = GetHitResultUnderFinger(ETouchIndex::Touch1, ECollisionChannel::ECC_Visibility, true, Hit);
-	}
-	else
-	{
-		bHitSuccessful = GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, true, Hit);
-	}
 
-	// If we hit a surface, cache the location
-	if (bHitSuccessful)
+	if (ATactiCubeCharacter* TCCharacter = Cast<ATactiCubeCharacter>(GetPawn()))
 	{
-		CachedDestination = Hit.Location;
+		CachedDestination = DirectionAxis == EInputDirectionAxis::IDA_Forward ?
+			TCCharacter->GetNextLocation(FVector(Direction.X, 0.f, 0.f)) :
+			TCCharacter->GetNextLocation(FVector(0.f, Direction.Y, 0.f));
 	}
-	
-	// Move towards mouse pointer or touch
+	else return;
+
+	// Move towards next grid position
 	APawn* ControlledPawn = GetPawn();
 	if (ControlledPawn != nullptr)
 	{
@@ -105,21 +92,8 @@ void ATactiCubePlayerController::OnSetDestinationReleased()
 	{
 		// We move there and spawn some particles
 		UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, CachedDestination);
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, FXCursor, CachedDestination, FRotator::ZeroRotator, FVector(1.f, 1.f, 1.f), true, true, ENCPoolMethod::None, true);
 	}
 
 	FollowTime = 0.f;
-}
-
-// Triggered every frame when the input is held down
-void ATactiCubePlayerController::OnTouchTriggered()
-{
-	bIsTouch = true;
-	OnSetDestinationTriggered();
-}
-
-void ATactiCubePlayerController::OnTouchReleased()
-{
-	bIsTouch = false;
-	OnSetDestinationReleased();
+	DirectionAxis = EInputDirectionAxis::IDA_None;
 }

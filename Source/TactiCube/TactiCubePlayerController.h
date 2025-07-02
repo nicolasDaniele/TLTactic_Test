@@ -7,10 +7,18 @@
 #include "GameFramework/PlayerController.h"
 #include "TactiCubePlayerController.generated.h"
 
+UENUM(BlueprintType)
+enum class EInputDirectionAxis : uint8
+{
+	IDA_None	UMETA(DisplayName = "NONE"),
+	IDA_Forward UMETA(DisplayName = "FORWARD"),
+	IDA_Right	UMETA(DisplayName = "RIGHT")
+};	  
+	  
 /** Forward declaration to improve compiling times */
-class UNiagaraSystem;
 class UInputMappingContext;
 class UInputAction;
+struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -26,43 +34,29 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	float ShortPressThreshold;
 
-	/** FX Class that we will spawn when clicking */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-	UNiagaraSystem* FXCursor;
-
 	/** MappingContext */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
 	UInputMappingContext* DefaultMappingContext;
-	
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
-	UInputAction* SetDestinationClickAction;
 
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
-	UInputAction* SetDestinationTouchAction;
+	/** Input Action for movement */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* SetDestinationKeyboardAction;
 
 protected:
 	/** True if the controlled character should navigate to the mouse cursor. */
 	uint32 bMoveToMouseCursor : 1;
 
 	virtual void SetupInputComponent() override;
-	
-	// To add mapping context
-	virtual void BeginPlay();
 
 	/** Input handlers for SetDestination action. */
 	void OnInputStarted();
-	void OnSetDestinationTriggered();
+	void OnSetDestinationTriggered(const FInputActionValue& InputActionValue);
 	void OnSetDestinationReleased();
-	void OnTouchTriggered();
-	void OnTouchReleased();
+
+	UPROPERTY(BlueprintReadOnly)
+	EInputDirectionAxis DirectionAxis = EInputDirectionAxis::IDA_None;
 
 private:
 	FVector CachedDestination;
-
-	bool bIsTouch; // Is it a touch device
 	float FollowTime; // For how long it has been pressed
 };
-
-
