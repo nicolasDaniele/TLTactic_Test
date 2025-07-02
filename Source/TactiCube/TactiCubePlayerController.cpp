@@ -60,21 +60,31 @@ void ATactiCubePlayerController::OnInputStarted()
 // Triggered every frame when the input is held down
 void ATactiCubePlayerController::OnSetDestinationTriggered(const FInputActionValue& InputActionValue)
 {
+	ATactiCubeCharacter* TCCharacter = Cast<ATactiCubeCharacter>(GetPawn());
+	if (TCCharacter == nullptr)
+	{
+		return;
+	}
+
 	FVector Direction = InputActionValue.Get<FVector>();
 
-	DirectionAxis = FMath::Abs(Direction.Y) > FMath::Abs(Direction.X) ?
-		EInputDirectionAxis::IDA_Right : EInputDirectionAxis::IDA_Forward;
+	if (FMath::Abs(Direction.Y) > FMath::Abs(Direction.X))
+	{
+		DirectionAxis = EInputDirectionAxis::IDA_Right;
+		TCCharacter->OnDirectionChanged.Broadcast(DirectionAxis);
+	}
+	else if (FMath::Abs(Direction.X) > FMath::Abs(Direction.Y))
+	{
+		DirectionAxis = EInputDirectionAxis::IDA_Forward;
+		TCCharacter->OnDirectionChanged.Broadcast(DirectionAxis);
+	}
 
+	CachedDestination = DirectionAxis == EInputDirectionAxis::IDA_Forward ?
+		TCCharacter->GetNextLocation(FVector(Direction.X, 0.f, 0.f)) :
+		TCCharacter->GetNextLocation(FVector(0.f, Direction.Y, 0.f));
+	
 	// We flag that the input is being pressed
 	FollowTime += GetWorld()->GetDeltaSeconds();
-
-	if (ATactiCubeCharacter* TCCharacter = Cast<ATactiCubeCharacter>(GetPawn()))
-	{
-		CachedDestination = DirectionAxis == EInputDirectionAxis::IDA_Forward ?
-			TCCharacter->GetNextLocation(FVector(Direction.X, 0.f, 0.f)) :
-			TCCharacter->GetNextLocation(FVector(0.f, Direction.Y, 0.f));
-	}
-	else return;
 
 	// Move towards next grid position
 	APawn* ControlledPawn = GetPawn();

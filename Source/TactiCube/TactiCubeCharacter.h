@@ -6,6 +6,10 @@
 #include "GameFramework/Character.h"
 #include "TactiCubeCharacter.generated.h"
 
+enum class EInputDirectionAxis : uint8;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDirectionChangedSignature, EInputDirectionAxis, NewDirection);
+
 UCLASS(Blueprintable)
 class ATactiCubeCharacter : public ACharacter
 {
@@ -23,6 +27,9 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
 	FVector GetNextLocation(FVector Direction);
+
+	UPROPERTY(BlueprintAssignable)
+	FDirectionChangedSignature OnDirectionChanged;
 
 private:
 	/** Top down camera */
